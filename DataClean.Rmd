@@ -1,0 +1,72 @@
+---
+title: "DS 440 EDA"
+output: html_notebook
+---
+
+Packages    
+```{r}
+library(dplyr)
+```
+
+Data Step:
+
+```{r}
+batter2020 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sc_2020.csv")
+batter2020 <- rename(batter2020, player_id = batter)
+batter2021 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sc_2021.csv")
+batter2021 <- rename(batter2021, player_id = batter)
+batter2022 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sc_2022.csv")
+batter2022 <- rename(batter2022, player_id = batter)
+batter2023 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sc_2023.csv")
+batter2023 <- rename(batter2023, player_id = batter)
+```
+
+```{r}
+sprintspeed20 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sprint_speed_2020.csv")
+sprintspeed21 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sprint_speed_2021.csv")
+sprintspeed22 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sprint_speed_2022.csv")
+sprintspeed23 <- read.csv("C:/Users/lucas/OneDrive - The Pennsylvania State University/DS 440/data/sprint_speed_2023.csv")
+```
+
+```{r}
+total2020 <- merge(batter2020, sprintspeed20, by = "player_id", all.x = T)
+total2021 <- merge(batter2021, sprintspeed21, by = "player_id", all.x = T)
+total2022 <- merge(batter2022, sprintspeed22, by = "player_id", all.x = T)
+total2023 <- merge(batter2023, sprintspeed23, by = "player_id", all.x = T)
+master <- rbind(total2020, total2021, total2022, total2023)
+in_play <- subset(master, !is.na(hc_x))
+```
+
+Feature engineer spray angle
+```{r}
+spray_angle <- with(in_play, round(
+  (atan(
+    (hc_x-125.42)/(198.27-hc_y)
+   )*180/pi*.75)
+  ,1))
+in_play$spray_angle <- spray_angle
+head(in_play, 25)
+```
+
+Cleaning
+```{r}
+at_bat <- subset(in_play, select = c(
+  "player_id", "player_name", "events", "hit_location", "bb_type", 
+  "balls", "strikes", "outs_when_up", "inning", "hc_x", "hc_y", 
+  "vx0", "vy0", "vz0", "ax", "ay", "az", "sz_top", "sz_bot", 
+  "hit_distance_sc", "launch_speed", "launch_angle", 
+  "effective_speed", "estimated_ba_using_speedangle", 
+  "estimated_woba_using_speedangle", "woba_value", "woba_denom", 
+  "launch_speed_angle", "if_fielding_alignment", 
+  "of_fielding_alignment", "delta_run_exp", "sprint_speed", "spray_angle"
+))
+```
+
+Writing Data
+```{r}
+csv_content <- paste(capture.output(write.csv(at_bat, row.names = FALSE)), collapse = "\n")
+
+cat(csv_content, file = "at_bat.csv")
+
+```
+
