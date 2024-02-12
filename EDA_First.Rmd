@@ -104,9 +104,9 @@ subset_data <- subset(at_bat, events %in% main_events)
 plot(subset_data$launch_speed, 
      subset_data$launch_angle, 
      col = custom_colors[subset_data$events],
-     main = "Scatterplot of Launch Speed vs Spray Angle With Outs",
+     main = "Scatterplot of Launch Speed vs Launch Angle With Outs",
      xlab = "Launch Speed",
-     ylab = "Spray Angle"
+     ylab = "Launch Angle"
 )
 
 legend("topright",
@@ -138,61 +138,73 @@ legend("topright",
        cex = 0.8
 )
 
-rglwidget()
+#rglwidget()
 ```
-
 ```{r}
-#only single, double, triple, HR
-main_events <- c("single", "double", "triple", "home_run")
+#only out, single, double, triple, HR
+main_events <- c("field_out", "single", "double", "triple", "home_run")
+
+custom_colors <- c(field_out = "blue", single = "yellow", double = "orange", triple = "green", home_run = "red")
 
 subset_data <- subset(at_bat, events %in% main_events)
 
-custom_colors <- c("red", "yellow", "green", "blue")
-
 plot(subset_data$launch_speed, 
      subset_data$spray_angle, 
-     col = custom_colors[as.factor(subset_data$events)],
-     main = "Scatterplot of Launch Speed vs Spray Angle Without Outs",
+     col = custom_colors[subset_data$events],
+     main = "Scatterplot of Launch Speed vs Spray Angle With Outs",
      xlab = "Launch Speed",
      ylab = "Spray Angle"
 )
 
 legend("topright",
-       legend = unique(subset_data$events), 
+       legend = names(custom_colors), 
        col = custom_colors, 
        title = "Event",
        pch = 16,
        cex = 0.8
 )
 ```
-You can see a lot of the homeruns are pulled when they are weaker hit balls which I think is interesting to note. With regular xwOBA only accounting for launch speed (exit velo) it probably wouldn't count this very well. 
+You can see that people are getting more home runs at around -40 and 40 when looking at the spray angle. The pulled balls (around -40) also seem to get more singles as they are going more down towards the gap in fielding positions. 
 
 ```{r}
-#only single, double, triple, HR
-main_events <- c("single", "double", "triple", "field_out")
+#summary(at_bat$sprint_speed)
+at_bat <- at_bat %>%
+  mutate(sprint_speed_cat = case_when(
+    sprint_speed < 26.3 ~ "slow",
+    sprint_speed >= 26.3 & sprint_speed <= 28.3 ~ "average",
+    sprint_speed > 28.3 ~ "fast",
+    TRUE ~ NA_character_  # Handle other cases if any
+  ))
+
+main_events <- c("field_out", "single", "double", "triple", "home_run")
+
+custom_colors <- c(field_out = "blue", single = "yellow", double = "orange", triple = "green", home_run = "red")
 
 subset_data <- subset(at_bat, events %in% main_events)
 
-custom_colors <- c("red", "yellow", "green", "blue")
+ground_ball_data <- subset_data %>%
+  filter(bb_type == "ground_ball")
 
-plot(subset_data$launch_speed, 
-     subset_data$sprint_speed, 
-     col = custom_colors[as.factor(subset_data$events)],
-     main = "Scatterplot of Launch Speed vs Sprint Speed",
-     xlab = "Launch Speed",
-     ylab = "Sprint Speed"
-)
+# Calculate the percentage of hitters for each combination of events and sprint_speed_cat
+summary_data <- ground_ball_data %>%
+  group_by(events, sprint_speed_cat) %>%
+  summarise(percentage = n() / nrow(ground_ball_data) * 100)
 
-legend("topright",
-       legend = unique(subset_data$events), 
-       col = custom_colors, 
-       title = "Event",
-       pch = 16,
-       cex = 0.8
-)
-```
-
-```{r}
-
+ggplot(summary_data, aes(x = sprint_speed_cat, y = percentage, fill = events)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  labs(title = "Percentage of Hitters with Single, Double, or Triple for Ground Balls",
+       x = "Sprint Speed Category",
+       y = "Percentage") +
+  scale_fill_manual(values = c("single" = "blue", "double" = "orange", "triple" = "green", "field_out" = "grey"))
+'''
+ggplot(summary_data, aes(x = "", y = percentage, fill = events)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  facet_wrap(~sprint_speed_cat) +
+  labs(title = "Percentage of Hitters with Single, Double, or Triple for Ground Balls",
+       x = NULL,
+       y = NULL) +
+  scale_fill_manual(values = c("single" = "blue", "double" = "orange", "triple" = "green", "field_out" = "grey"))
+  '''
 ```
 
