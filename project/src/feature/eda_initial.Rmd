@@ -1,0 +1,203 @@
+---
+title: "Early EDA"
+output: html_notebook
+---
+
+```{r}
+# Set working directory
+wd <- "C:/Users/malco/Documents/GitHub/DS440/" # change as needed
+```
+
+Packages
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(scatterplot3d)
+#library(rgl) I can't download this package but it is supposed to make the 3d scatterplot interactive
+```
+
+
+Data
+```{r}
+bips <- read.csv(paste0(wd, "project/volume/data/interim/bip_raw.csv"))
+head(bips)
+```
+ 
+```{r}
+#grouping the out categories
+bips <- bips %>%
+  mutate(events_gr = case_when(
+    events %in% c("field_out", "force_out", "grounded_into_double_play", "field_error", "sac_fly", "double_play", "fielders_choice", "fielders_choice_out", "sac_fly_double_play", "triple_play") ~ "field_out",
+    TRUE ~ events
+  )) %>%
+  filter(!(events %in% c("sac_bunt", "sac_bunt_double_play", "catcher_interf"))) # Remove specified events
+
+unique(bips$events_gr)
+```
+```{r}
+colSums(is.na(bips))
+bips <- bips %>% drop_na()
+```
+
+Univariate
+```{r}
+cat("Launch Angle 5 Number Summary\n")
+summary(bips$launch_angle)
+
+cat("\nExit Velocity 5 Number Summary\n")
+summary(bips$launch_speed)
+```
+
+```{r}
+hist(bips$launch_angle, 
+     main = "Histogram of Launch Angle",
+     xlab = "Launch Angle",
+     ylab = "Frequency"
+)
+
+hist(bips$launch_speed, 
+     main = "Histogram of Exit Velocity",
+     xlab = "Exit Velocity",
+     ylab = "Frequency"
+)
+```
+
+Launch angle is pretty normal which you would come to expect seeing that all players want to hit the ball coming across it or that is what they are aiming to do. Exit velocity is left skewed with a median of 91, which also makes sense as players do need to hit the ball hard and well to have a ball in play.
+
+```{r}
+#spray angle percentage:
+bips <- bips %>%
+  mutate(pull = case_when(
+    stand == "R" & spray_angle < -20 ~ "pulled",
+    stand == "R" & spray_angle >= -20 & spray_angle <= 20 ~ "center",
+    stand == "R" & spray_angle > 20 ~ "opposite",
+    stand == "L" & spray_angle < -20 ~ "opposite",
+    stand == "L" & spray_angle >= -20 & spray_angle <= 20 ~ "center",
+    stand == "L" & spray_angle > 20 ~ "pulled",
+    TRUE ~ NA_character_  # Handle other cases if any
+  ))
+
+pulled_percentages <- bips %>%
+  group_by(stand) %>%
+  summarise(pulled_percentage = sum(pull == "pulled") / n() * 100)
+
+print(pulled_percentages)
+
+events_of_interest <- c("field_out", "single", "double", "home_run", "triple")
+filtered_data <- bips %>%
+  filter(events_gr %in% events_of_interest)
+
+ggplot(filtered_data, aes(x = pull, fill = events_gr)) +
+  geom_bar(position = "fill", stat = "count") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  labs(title = "Percentage of Events by Pull",
+       x = "Pull",
+       y = "Percentage") +
+  scale_fill_manual(values = c("field_out" = "blue", 
+                               "single" = "green", 
+                               "double" = "orange", 
+                               "home_run" = "red", 
+                               "triple" = "purple"))
+```
+
+```{r}
+# Add bar charts and proportions for hit type
+```
+
+
+Bivariate
+```{r}
+#only out, single, double, triple, HR
+main_events <- c("field_out", "single", "double", "triple", "home_run")
+
+custom_colors <- c(field_out = "blue", single = "yellow", double = "orange", triple = "orange", home_run = "red")
+
+plot(bips$launch_speed, 
+     bips$launch_angle, 
+     col = custom_colors[bips$events],
+     main = "Scatterplot of Launch Speed vs Launch Angle With Result",
+     xlab = "Launch Speed",
+     ylab = "Launch Angle"
+)
+
+legend("topright",
+       legend = names(custom_colors), 
+       col = custom_colors, 
+       title = "Event",
+       pch = 16,
+       cex = 0.8
+)
+```
+
+You can see that people are getting more home runs at around -40 and 40 when looking at the spray angle. The pulled balls (around -40) also seem to get more singles as they are going more down towards the gap in fielding positions. 
+
+```{r}
+# check woba values with event type
+```
+
+```{r}
+# same plot above but with woba values and smoothed out
+```
+
+
+```{r}
+
+scatterplot3d(bips$launch_speed, 
+              bips$launch_angle, 
+              bips$spray_angle, 
+              color = custom_colors[bips$events],
+              main = "3D Scatterplot of Launch Speed, Launch Angle, and Spray Angle",
+              xlab = "Launch Speed",
+              ylab = "Launch Angle",
+              zlab = "Spray Angle"
+)
+
+
+legend("topright",
+       legend = names(custom_colors), 
+       fill = custom_colors,
+       title = "Event",
+       cex = 0.8
+)
+
+#rglwidget()
+```
+
+```{r}
+# Some changes needed on this plot
+
+
+#summary(bips$sprint_speed)
+bips <- bips %>%
+  mutate(sprint_speed_cat = case_when(
+    sprint_speed < 26.3 ~ "slow",
+    sprint_speed >= 26.3 & sprint_speed <= 28.3 ~ "average",
+    sprint_speed > 28.3 ~ "fast",
+    TRUE ~ NA_character_  # Handle other cases if any
+  ))
+
+ground_ball_data <- bips %>%
+  filter(bb_type == "ground_ball")
+
+# Calculate the percentage of hitters for each combination of events and sprint_speed_cat
+summary_data <- ground_ball_data %>%
+  group_by(events, sprint_speed_cat) %>%
+  summarise(percentage = n() / nrow(ground_ball_data) * 100)
+
+ggplot(summary_data, aes(x = sprint_speed_cat, y = percentage, fill = events)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  labs(title = "Percentage of Hitters with Single, Double, or Triple for Ground Balls",
+       x = "Sprint Speed Category",
+       y = "Percentage") +
+  scale_fill_manual(values = c("single" = "blue", "double" = "orange", "triple" = "green", "field_out" = "grey"))
+
+#ggplot(summary_data, aes(x = "", y = percentage, fill = events)) +
+ # geom_bar(stat = "identity", width = 1) +
+#  coord_polar(theta = "y") +
+ # facet_wrap(~sprint_speed_cat) +
+#  labs(title = "Percentage of Hitters with Single, Double, or Triple for Ground Balls",
+ #      x = NULL,
+  #     y = NULL) +
+  #scale_fill_manual(values = c("single" = "blue", "double" = "orange", "triple" = "green", "field_out" #= "grey"))
+```
+
