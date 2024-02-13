@@ -5,7 +5,6 @@ library(vip)
 
 # Load processed data
 train <- read.csv("project/volume/data/processed/train.csv")
-test <- read.csv("project/volume/data/processed/test.csv")
 val <- readRDS("project/volume/data/processed/val.rds")
 
 train_gbt_model <- function(train, test, val, model_name) {
@@ -23,9 +22,9 @@ train_gbt_model <- function(train, test, val, model_name) {
   
   tune_res <- wf %>%
     tune_bayes(resamples = val,
-               initial = 5,
-               iter = 10,
-               control = control_bayes(verbose = TRUE, no_improve = 10, seed = 34),
+               initial = 10,
+               iter = 100,
+               control = control_bayes(verbose = TRUE, no_improve = 10, seed = 40),
                metrics = metric_set(rmse))
   
   best_params <- select_best(tune_res, "rmse")
@@ -37,19 +36,11 @@ train_gbt_model <- function(train, test, val, model_name) {
   
   saveRDS(final_model, paste0("project/volume/models/", model_name, ".rds"))
   
-  test_preds <- predict(final_model, test) %>%
-    bind_cols(test)
-  
-  rmse_res <- rmse(data = test_preds, truth = woba_value, estimate = .pred)
-  
-  write.csv(rmse_res, paste0("project/volume/models/", model_name, "_rmse.csv"))
-  
   vip_plot <- final_model %>% 
     extract_fit_parsnip() %>% 
     vip(num_features = 4) +
     ggtitle("Feature Importance")
   
-  # Save feature importance plot
   ggsave(filename = paste0("project/volume/plots/", model_name, "_vip.png"), plot = vip_plot, width = 10, height = 8, dpi = 300)
   
 }

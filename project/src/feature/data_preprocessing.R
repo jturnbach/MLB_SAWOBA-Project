@@ -28,7 +28,7 @@ bip_processed <- bip_processed %>%
   select(bip_id, launch_speed, launch_angle, spray_angle, sprint_speed, woba_value)
 
 # split data
-set.seed(34)
+set.seed(40)
 data_split <- initial_split(bip_processed, prop = 0.8)
 train <- training(data_split)
 test <- testing(data_split)
