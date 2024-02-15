@@ -1,203 +1,481 @@
 ---
-title: "Early EDA"
-output: html_notebook
+title: "Initial Exploratory Data Analysis"
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r}
+# Front Matter
+
+```{r, message=FALSE, warning=FALSE}
 # Set working directory
-wd <- "C:/Users/malco/Documents/GitHub/DS440/" # change as needed
-```
+wd <- "C:/Users/malco/Documents/GitHub/DS440/" # Change as needed
 
-Packages
-```{r}
+# Load libraries
 library(tidyverse)
-library(ggplot2)
-library(scatterplot3d)
-#library(rgl) I can't download this package but it is supposed to make the 3d scatterplot interactive
-```
+library(scales)
+library(GeomMLBStadiums)
 
-
-Data
-```{r}
+# Read in data
 bips <- read.csv(paste0(wd, "project/volume/data/interim/bip_raw.csv"))
+
+# Print dimensions and first few observations
+dim(bips)
 head(bips)
+
+# BIP result order and colors
+bip_res_order <- c("field_out", "single", "double", "triple", "home_run")
+bip_res_colors <- c("field_out" = "#0066CC", "single" = "#FFFF00", "double" = "#FFCC00", "triple" = "#FF6600", "home_run" = "#CC3333")
+
+# Spray type order
+spray_type_order <- c("pull", "center", "oppo")
+sprint_speed_type_order <- c("slow", "average", "fast")
 ```
+
+# Data Manipulation
  
 ```{r}
-#grouping the out categories
+# Create BIP result
 bips <- bips %>%
-  mutate(events_gr = case_when(
+  mutate(bip_result = case_when(
     events %in% c("field_out", "force_out", "grounded_into_double_play", "field_error", "sac_fly", "double_play", "fielders_choice", "fielders_choice_out", "sac_fly_double_play", "triple_play") ~ "field_out",
-    TRUE ~ events
-  )) %>%
+    TRUE ~ events)) %>%
   filter(!(events %in% c("sac_bunt", "sac_bunt_double_play", "catcher_interf"))) # Remove specified events
 
-unique(bips$events_gr)
+unique(bips$bip_result)
 ```
 ```{r}
-colSums(is.na(bips))
-bips <- bips %>% drop_na()
+# Check missing values
+modeling_columns <- bips %>% select(launch_speed, launch_angle, sprint_speed, spray_angle)
+colSums(is.na(modeling_columns))
 ```
 
-Univariate
-```{r}
-cat("Launch Angle 5 Number Summary\n")
-summary(bips$launch_angle)
+# Univariate Analysis
 
+```{r}
+bips %>%
+  group_by(game_year) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+```
+
+```{r}
+# Numerical summary of exit velocity and launch angle
 cat("\nExit Velocity 5 Number Summary\n")
 summary(bips$launch_speed)
+
+cat("Launch Angle 5 Number Summary\n")
+summary(bips$launch_angle)
 ```
 
 ```{r}
-hist(bips$launch_angle, 
-     main = "Histogram of Launch Angle",
-     xlab = "Launch Angle",
-     ylab = "Frequency"
-)
+# Visual summary of exit velocity and launch angle
+summary_stats <- bips %>%
+  summarize(Min = min(launch_speed, na.rm = TRUE),
+            Q1 = quantile(launch_speed, 0.25, na.rm = TRUE),
+            Median = median(launch_speed, na.rm = TRUE),
+            Q3 = quantile(launch_speed, 0.75, na.rm = TRUE),
+            Max = max(launch_speed, na.rm = TRUE),
+            Mean = mean(launch_speed, na.rm = TRUE),
+            SD = sd(launch_speed, na.rm = TRUE))
 
-hist(bips$launch_speed, 
-     main = "Histogram of Exit Velocity",
-     xlab = "Exit Velocity",
-     ylab = "Frequency"
-)
+ggplot(data = bips, mapping = aes(x = launch_speed)) +
+  geom_histogram(fill = "#0066CC", color = "#FFFFFF") +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_text(
+    data = summary_stats,
+    aes(x = Inf, y = Inf, label = paste(
+      "Min:", round(Min, 2), "\n",
+      "Q1:", round(Q1, 2), "\n",
+      "Median:", round(Median, 2), "\n",
+      "Q3:", round(Q3, 2), "\n",
+      "Max:", round(Max, 2), "\n",
+      "Mean:", round(Mean, 2), "\n",
+      "SD:", round(SD, 2))), hjust = 1.1, vjust = 1.1) +
+  labs(x = "Exit Velocity (mph)", y = "Count", title = "Distribution of Exit Velocity") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+summary_stats <- bips %>%
+  summarize(Min = min(launch_angle, na.rm = TRUE),
+            Q1 = quantile(launch_angle, 0.25, na.rm = TRUE),
+            Median = median(launch_angle, na.rm = TRUE),
+            Q3 = quantile(launch_angle, 0.75, na.rm = TRUE),
+            Max = max(launch_angle, na.rm = TRUE),
+            Mean = mean(launch_angle, na.rm = TRUE),
+            SD = sd(launch_angle, na.rm = TRUE))
+
+ggplot(data = bips, mapping = aes(x = launch_angle)) +
+  geom_histogram(fill = "#0066CC", color = "#FFFFFF") +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_text(
+    data = summary_stats,
+    aes(x = Inf, y = Inf, label = paste(
+      "Min:", round(Min, 2), "\n",
+      "Q1:", round(Q1, 2), "\n",
+      "Median:", round(Median, 2), "\n",
+      "Q3:", round(Q3, 2), "\n",
+      "Max:", round(Max, 2), "\n",
+      "Mean:", round(Mean, 2), "\n",
+      "SD:", round(SD, 2))), hjust = 1.1, vjust = 1.1) +
+  labs(x = "Launch Angle (degrees)", y = "Count", title = "Distribution of Launch Angle") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 ```
 
-Launch angle is pretty normal which you would come to expect seeing that all players want to hit the ball coming across it or that is what they are aiming to do. Exit velocity is left skewed with a median of 91, which also makes sense as players do need to hit the ball hard and well to have a ball in play.
+```{r}
+# Numerical summary of spray angle
+cat("\nSpray Angle 5 Number Summary\n")
+summary(bips$spray_angle)
+```
 
 ```{r}
-#spray angle percentage:
+# Visual summary of spray angle
+summary_stats <- bips %>%
+  summarize(Min = min(spray_angle, na.rm = TRUE),
+            Q1 = quantile(spray_angle, 0.25, na.rm = TRUE),
+            Median = median(spray_angle, na.rm = TRUE),
+            Q3 = quantile(spray_angle, 0.75, na.rm = TRUE),
+            Max = max(spray_angle, na.rm = TRUE),
+            Mean = mean(spray_angle, na.rm = TRUE),
+            SD = sd(spray_angle, na.rm = TRUE))
+
+ggplot(data = bips, mapping = aes(x = spray_angle)) +
+  geom_histogram(bins = 15, fill = "#0066CC", color = "#FFFFFF") +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_text(
+    data = summary_stats,
+    aes(x = Inf, y = Inf, label = paste(
+      "Min:", round(Min, 2), "\n",
+      "Q1:", round(Q1, 2), "\n",
+      "Median:", round(Median, 2), "\n",
+      "Q3:", round(Q3, 2), "\n",
+      "Max:", round(Max, 2), "\n",
+      "Mean:", round(Mean, 2), "\n",
+      "SD:", round(SD, 2))), hjust = 1.1, vjust = 1.1) +
+  labs(x = "Spray Angle (degrees)", y = "Count", title = "Distribution of Spray Angle") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# Categorize spray angle
 bips <- bips %>%
-  mutate(pull = case_when(
-    stand == "R" & spray_angle < -20 ~ "pulled",
-    stand == "R" & spray_angle >= -20 & spray_angle <= 20 ~ "center",
-    stand == "R" & spray_angle > 20 ~ "opposite",
-    stand == "L" & spray_angle < -20 ~ "opposite",
-    stand == "L" & spray_angle >= -20 & spray_angle <= 20 ~ "center",
-    stand == "L" & spray_angle > 20 ~ "pulled",
-    TRUE ~ NA_character_  # Handle other cases if any
-  ))
+  mutate(spray_type = case_when(
+    stand == "R" & spray_angle < -15 ~ "pull",
+    stand == "R" & spray_angle >= -15 & spray_angle <= 15 ~ "center",
+    stand == "R" & spray_angle > 15 ~ "oppo",
+    stand == "L" & spray_angle > 15 ~ "pull",
+    stand == "L" & spray_angle >= -15 & spray_angle <= 15 ~ "center",
+    stand == "L" & spray_angle < -15 ~ "oppo",
+    TRUE ~ NA_character_))
+```
 
-pulled_percentages <- bips %>%
-  group_by(stand) %>%
-  summarise(pulled_percentage = sum(pull == "pulled") / n() * 100)
+```{r}
+# Calculate count for each spray type
+spray_type_rates <- bips %>%
+  group_by(spray_type) %>%
+  summarise(count = n()) %>%
+  drop_na()
 
-print(pulled_percentages)
+spray_type_rates$spray_type <- factor(spray_type_rates$spray_type, levels = c("center", "pull", "oppo"))
 
-events_of_interest <- c("field_out", "single", "double", "home_run", "triple")
-filtered_data <- bips %>%
-  filter(events_gr %in% events_of_interest)
+# Plot bar chart of spray type
+ggplot(data = spray_type_rates, mapping = aes(x = spray_type, y = count)) +
+  geom_bar(stat = "identity", fill = "#0066CC", color = "#FFFFFF") +
+  labs(x = "Spray Type", y = "Count", title = "Distribution of Spray Type") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
 
-ggplot(filtered_data, aes(x = pull, fill = events_gr)) +
+```{r}
+# Numerical summary of sprint speed
+cat("\nSprint Speed 5 Number Summary\n")
+summary(bips$sprint_speed)
+```
+
+```{r}
+# Visual summary of sprint speed
+summary_stats <- bips %>%
+  summarize(Min = min(sprint_speed, na.rm = TRUE),
+            Q1 = quantile(sprint_speed, 0.25, na.rm = TRUE),
+            Median = median(sprint_speed, na.rm = TRUE),
+            Q3 = quantile(sprint_speed, 0.75, na.rm = TRUE),
+            Max = max(sprint_speed, na.rm = TRUE),
+            Mean = mean(sprint_speed, na.rm = TRUE),
+            SD = sd(sprint_speed, na.rm = TRUE))
+
+ggplot(data = bips, mapping = aes(x = sprint_speed)) +
+  geom_histogram(fill = "#0066CC", color = "#FFFFFF") +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_text(
+    data = summary_stats,
+    aes(x = Inf, y = Inf, label = paste(
+      "Min:", round(Min, 2), "\n",
+      "Q1:", round(Q1, 2), "\n",
+      "Median:", round(Median, 2), "\n",
+      "Q3:", round(Q3, 2), "\n",
+      "Max:", round(Max, 2), "\n",
+      "Mean:", round(Mean, 2), "\n",
+      "SD:", round(SD, 2))), hjust = 1.1, vjust = 1.1) +
+  labs(x = "Sprint Speed (ft/s)", y = "Count", title = "Distribution of Sprint Speed") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# Calculate count for BIP result
+bip_result_rates <- bips %>%
+  group_by(bip_result) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+# Reorder levels of BIP result based on count
+bip_result_rates$bip_result <- factor(bip_result_rates$bip_result, 
+                                       levels = bip_result_rates$bip_result)
+
+# Plot bar chart of BIP result
+ggplot(data = bip_result_rates, mapping = aes(x = bip_result, y = count)) +
+  geom_bar(stat = "identity", fill = "#0066CC", color = "#FFFFFF") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "Result of Batted Ball", y = "Count", title = "Distribution of BIP Result") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+# Bivariate Analysis
+
+```{r}
+# Reorder factors for plots
+bips$bip_result <- factor(bips$bip_result, levels = bip_res_order)
+bips$spray_type <- factor(bips$spray_type, levels = spray_type_order)
+```
+
+```{r}
+# Calculate proportion of events for centered and pulled balls in play
+spray_type_results <- bips %>%
+  group_by(spray_type, bip_result) %>%
+  summarise(count = n()) %>%
+  arrange(factor(spray_type, levels = spray_type_order)) %>%
+  ungroup() %>%
+  group_by(spray_type) %>%
+  mutate(total_count = sum(count), proportion = round(100 * (count / total_count), 1)) %>%
+  arrange(desc(proportion)) %>%
+  select(-count, -total_count)
+  
+spray_type_results %>%
+  filter(spray_type == "center")
+
+spray_type_results %>%
+  filter(spray_type == "pull")
+```
+
+```{r}
+# Plot stacked bar chart of events by spray type
+ggplot(data = bips %>% filter(spray_type != "oppo"), mapping = aes(x = spray_type, fill = bip_result)) +
   geom_bar(position = "fill", stat = "count") +
-  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
-  labs(title = "Percentage of Events by Pull",
-       x = "Pull",
-       y = "Percentage") +
-  scale_fill_manual(values = c("field_out" = "blue", 
-                               "single" = "green", 
-                               "double" = "orange", 
-                               "home_run" = "red", 
-                               "triple" = "purple"))
+  labs(title = "BIP Results by Spray Type", x = "Spray Type", y = "Percentage") +
+  scale_fill_manual(values = bip_res_colors) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 ```
 
 ```{r}
-# Add bar charts and proportions for hit type
-```
+# Calculate proportion of events for centered and pulled balls in play (fly balls only)
+spray_type_results <- bips %>%
+  filter(bb_type == "fly_ball") %>%
+  group_by(spray_type, bip_result) %>%
+  summarise(count = n()) %>%
+  arrange(factor(spray_type, levels = spray_type_order)) %>%
+  ungroup() %>%
+  group_by(spray_type) %>%
+  mutate(total_count = sum(count), proportion = round(100 * (count / total_count), 1)) %>%
+  arrange(desc(proportion)) %>%
+  select(-count, -total_count)
+  
+spray_type_results %>%
+  filter(spray_type == "center")
 
-
-Bivariate
-```{r}
-#only out, single, double, triple, HR
-main_events <- c("field_out", "single", "double", "triple", "home_run")
-
-custom_colors <- c(field_out = "blue", single = "yellow", double = "orange", triple = "orange", home_run = "red")
-
-plot(bips$launch_speed, 
-     bips$launch_angle, 
-     col = custom_colors[bips$events],
-     main = "Scatterplot of Launch Speed vs Launch Angle With Result",
-     xlab = "Launch Speed",
-     ylab = "Launch Angle"
-)
-
-legend("topright",
-       legend = names(custom_colors), 
-       col = custom_colors, 
-       title = "Event",
-       pch = 16,
-       cex = 0.8
-)
-```
-
-You can see that people are getting more home runs at around -40 and 40 when looking at the spray angle. The pulled balls (around -40) also seem to get more singles as they are going more down towards the gap in fielding positions. 
-
-```{r}
-# check woba values with event type
+spray_type_results %>%
+  filter(spray_type == "pull")
 ```
 
 ```{r}
-# same plot above but with woba values and smoothed out
-```
-
-
-```{r}
-
-scatterplot3d(bips$launch_speed, 
-              bips$launch_angle, 
-              bips$spray_angle, 
-              color = custom_colors[bips$events],
-              main = "3D Scatterplot of Launch Speed, Launch Angle, and Spray Angle",
-              xlab = "Launch Speed",
-              ylab = "Launch Angle",
-              zlab = "Spray Angle"
-)
-
-
-legend("topright",
-       legend = names(custom_colors), 
-       fill = custom_colors,
-       title = "Event",
-       cex = 0.8
-)
-
-#rglwidget()
+# Plot stacked bar chart of events by spray type (fly balls only)
+ggplot(data = bips %>% filter(bb_type == "fly_ball", spray_type != "oppo"), mapping = aes(x = spray_type, fill = bip_result)) +
+  geom_bar(position = "fill", stat = "count") +
+  labs(title = "BIP Results by Spray Type (Fly Balls)", x = "Spray Type", y = "Percentage") +
+  scale_fill_manual(values = bip_res_colors) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 ```
 
 ```{r}
-# Some changes needed on this plot
+# Calculate proportion of events for centered and pulled balls in play (hard-hit fly balls only)
+spray_type_results <- bips %>%
+  filter(launch_speed >= 95, bb_type == "fly_ball") %>%
+  group_by(spray_type, bip_result) %>%
+  summarise(count = n()) %>%
+  arrange(factor(spray_type, levels = spray_type_order)) %>%
+  ungroup() %>%
+  group_by(spray_type) %>%
+  mutate(total_count = sum(count), proportion = round(100 * (count / total_count), 1)) %>%
+  arrange(desc(proportion)) %>%
+  select(-count, -total_count)
+  
+spray_type_results %>%
+  filter(spray_type == "center")
 
+spray_type_results %>%
+  filter(spray_type == "pull")
+```
 
-#summary(bips$sprint_speed)
+```{r}
+# Plot stacked bar chart of events by spray type (fly balls only)
+ggplot(data = bips %>% filter(launch_speed >= 95, bb_type == "fly_ball", spray_type != "oppo"), mapping = aes(x = spray_type, fill = bip_result)) +
+  geom_bar(position = "fill", stat = "count") +
+  labs(title = "BIP Results by Spray Type (HH Fly Balls)", x = "Spray Type", y = "Percentage") +
+  scale_fill_manual(values = bip_res_colors) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# Categorize sprint speed
 bips <- bips %>%
-  mutate(sprint_speed_cat = case_when(
+  mutate(sprint_speed_type = case_when(
     sprint_speed < 26.3 ~ "slow",
-    sprint_speed >= 26.3 & sprint_speed <= 28.3 ~ "average",
-    sprint_speed > 28.3 ~ "fast",
-    TRUE ~ NA_character_  # Handle other cases if any
-  ))
+    sprint_speed >= 26.3 & sprint_speed <= 28.2 ~ "average",
+    sprint_speed > 28.2 ~ "fast",
+    TRUE ~ NA_character_))
+```
 
-ground_ball_data <- bips %>%
-  filter(bb_type == "ground_ball")
+```{r}
+# Calculate proportion of events for sprint speed types (infield ground balls only)
+if_ground_balls_res <- bips %>%
+  filter(bb_type == "ground_ball" & hit_location < 7, !is.na(sprint_speed_type)) %>%
+  group_by(sprint_speed_type, bip_result) %>%
+  summarise(count = n()) %>%
+  arrange(factor(sprint_speed_type, levels = c("slow", "average", "fast"))) %>%
+  ungroup() %>%
+  group_by(sprint_speed_type) %>%
+  mutate(total_count = sum(count), proportion = round(100 * (count / total_count), 1)) %>%
+  arrange(desc(proportion)) %>%
+  select(-count, -total_count)
+  
+if_ground_balls_res %>%
+  filter(sprint_speed_type == "slow")
 
-# Calculate the percentage of hitters for each combination of events and sprint_speed_cat
-summary_data <- ground_ball_data %>%
-  group_by(events, sprint_speed_cat) %>%
-  summarise(percentage = n() / nrow(ground_ball_data) * 100)
+if_ground_balls_res %>%
+  filter(sprint_speed_type == "average")
 
-ggplot(summary_data, aes(x = sprint_speed_cat, y = percentage, fill = events)) +
-  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
-  labs(title = "Percentage of Hitters with Single, Double, or Triple for Ground Balls",
-       x = "Sprint Speed Category",
-       y = "Percentage") +
-  scale_fill_manual(values = c("single" = "blue", "double" = "orange", "triple" = "green", "field_out" = "grey"))
+if_ground_balls_res %>%
+  filter(sprint_speed_type == "fast")
+```
 
-#ggplot(summary_data, aes(x = "", y = percentage, fill = events)) +
- # geom_bar(stat = "identity", width = 1) +
-#  coord_polar(theta = "y") +
- # facet_wrap(~sprint_speed_cat) +
-#  labs(title = "Percentage of Hitters with Single, Double, or Triple for Ground Balls",
- #      x = NULL,
-  #     y = NULL) +
-  #scale_fill_manual(values = c("single" = "blue", "double" = "orange", "triple" = "green", "field_out" #= "grey"))
+```{r}
+# Plot stacked by bar chart of events by sprint speed type (infield ground balls only)
+bips$sprint_speed_type <- factor(bips$sprint_speed_type, levels = sprint_speed_type_order)
+
+ggplot(data = bips %>% filter(bb_type == "ground_ball" & hit_location < 7, !is.na(sprint_speed_type)), mapping = aes(x = sprint_speed_type, fill = bip_result)) +
+  geom_bar(position = "fill", stat = "count") +
+  labs(title = "BIP Results by Sprint Speed Type (IF Ground Balls)", x = "Sprint Speed Type", y = "Percentage") +
+  scale_fill_manual(values = bip_res_colors) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# wOBA value for each BIP result
+woba_by_result <- bips %>%
+  group_by(bip_result) %>%
+  summarise(woba_value = round(mean(woba_value, na.rm = TRUE), 1))
+
+woba_by_result
+```
+
+```{r}
+# Visualize wOBA values by BIP result
+ggplot(data = woba_by_result, mapping = aes(x = bip_result, y = woba_value)) +
+  geom_bar(stat = "identity", fill = "#0066CC", color = "#FFFFFF") +
+  labs(title = "wOBA Value by BIP Result", x = "Batted Ball Result", y = "wOBA Value") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# Relationship between EV and LA, colored by BIP result
+ggplot(data = bips, mapping = aes(x = launch_speed, y = launch_angle, color = bip_result)) +
+  geom_point() +
+  scale_color_manual(values = bip_res_colors) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = pretty_breaks(n = 8)) +
+  labs(title = "Batted Ball Results by Exit Velocity and Launch Angle", x = "Exit Velocity (mph)", y = "Launch Angle (degrees)") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# Relationship between EV and LA, colored by wOBA value
+
+# Bin width for smoothing
+binwidth <- 100
+
+# Relationship between EV and LA, colored by wOBA value
+ggplot(data = bips, aes(x = launch_speed, y = launch_angle, z = woba_value)) +
+  stat_summary_2d(aes(fill = ..value..), fun = "mean", geom = "tile", bins = 100) +
+  scale_fill_gradient2(low = "#0066CC", mid = "white", high = "#CC3333", midpoint = 1.0) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = pretty_breaks(n = 8)) +
+  labs(title = "wOBA Value by Exit Velocity and Launch Angle", x = "Exit Velocity (mph)", y = "Launch Angle (degrees)") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+```
+
+```{r}
+# Plot hit locations with baseball field background
+ggplot(data = bips %>% filter(player_name == "Semien, Marcus", game_year == 2023), aes(x = hc_x, y = hc_y, color = bip_result)) +
+  geom_spraychart(stadium_ids = "rangers", stadium_segments = "all") +
+    geom_point(size = 2) +
+    scale_color_manual(values = bip_res_colors) +
+    labs(title = "Hit Locations by BIP Result (Marcus Semien, 2023)", x = "Horizontal Hit Coordinate", y = "Vertical Hit Coordinate") +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+          axis.title = element_text(face = "bold"),
+          panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          legend.title = element_blank()) +
+  scale_y_reverse()
+
+ggplot(data = bips %>% filter(player_name == "Chapman, Matt", game_year == 2023), aes(x = hc_x, y = hc_y, color = bip_result)) +
+  geom_spraychart(stadium_ids = "blue_jays", stadium_segments = "all") +
+    geom_point(size = 2) +
+    scale_color_manual(values = bip_res_colors) +
+    labs(title = "Hit Locations by BIP Result (Matt Chapman, 2023)", x = "Horizontal Hit Coordinate", y = "Vertical Hit Coordinate") +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+          axis.title = element_text(face = "bold"),
+          panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          legend.title = element_blank()) +
+  scale_y_reverse()
 ```
 

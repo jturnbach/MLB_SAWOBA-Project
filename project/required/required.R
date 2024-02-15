@@ -1,0 +1,8 @@
+install.packages("tidyverse")
+install.packages("scales")
+install.packages("GeomMLBStadiums")
+install.packages("tidymodels")
+install.packages("xgboost")
+install.packages("ranger")
+install.packages("kknn")
+install.packages("vip")
