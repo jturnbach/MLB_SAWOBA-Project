@@ -23,13 +23,15 @@ bips <- read.csv(paste0(wd, "project/volume/data/interim/bip_raw.csv"))
 dim(bips)
 head(bips)
 
-# BIP result order and colors
-bip_res_order <- c("field_out", "single", "double", "triple", "home_run")
+# Factor coloring
 bip_res_colors <- c("field_out" = "#0066CC", "single" = "#FFFF00", "double" = "#FFCC00", "triple" = "#FF6600", "home_run" = "#CC3333")
+bb_class_colors <- c("barrel" = "#8B0000", solid_contact = "#FF4040", "flare_burner" = "#FFB347", "poorly_topped" = "#77DD77", "poorly_under" = "#8BD3E6", "poorly_weak" = "#FDFD96")
 
-# Spray type order
+# Factor ordering
+bip_res_order <- c("field_out", "single", "double", "triple", "home_run")
 spray_type_order <- c("pull", "center", "oppo")
 sprint_speed_type_order <- c("slow", "average", "fast")
+bb_class_order <- c("barrel", "solid_contact", "flare_burner", "poorly_topped", "poorly_under", "poorly_weak")
 ```
 
 # Data Manipulation
@@ -253,12 +255,34 @@ ggplot(data = bip_result_rates, mapping = aes(x = bip_result, y = count)) +
         panel.grid.minor = element_blank())
 ```
 
+```{r}
+# Calculate count for batted ball classification
+bb_classifications <- bips %>%
+  group_by(bb_class) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  drop_na()
+
+# Reorder levels of batted ball class based on count
+bb_classifications$bb_class <- factor(bb_classifications$bb_class, levels = bb_classifications$bb_class)
+
+# Plot bar chart of batted ball classifications
+ggplot(data = bb_classifications, mapping = aes(x = bb_class, y = count)) +
+  geom_bar(stat = "identity", fill = "#0066CC", color = "#FFFFFF") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "Batted Ball Classification", y = "Count", title = "Distribution of Batted Ball Classifications") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
 # Bivariate Analysis
 
 ```{r}
 # Reorder factors for plots
 bips$bip_result <- factor(bips$bip_result, levels = bip_res_order)
 bips$spray_type <- factor(bips$spray_type, levels = spray_type_order)
+bips$bb_class <- factor(bips$bb_class, levels = bb_class_order)
 ```
 
 ```{r}
@@ -448,6 +472,19 @@ ggplot(data = bips, aes(x = launch_speed, y = launch_angle, z = woba_value)) +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank())
+```
+
+```{r}
+# Relationship between EV and LA, colored by batted ball classification
+ggplot(data = bips, mapping = aes(x = launch_speed, y = launch_angle, color = bb_class)) +
+  geom_point() +
+  scale_color_manual(values = bb_class_colors) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = pretty_breaks(n = 8)) +
+  labs(title = "Batted Ball Classifications by Exit Velocity and Launch Angle", x = "Exit Velocity (mph)", y = "Launch Angle (degrees)") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 ```
 
 ```{r}

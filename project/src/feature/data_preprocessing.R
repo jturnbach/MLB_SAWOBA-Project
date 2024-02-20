@@ -19,7 +19,7 @@ bip_processed <- bip_processed %>%
 
 # remove unneeded variables and remove NA
 bip_processed <- bip_processed %>%
-  select(bip_id, ground_ball, launch_speed, launch_angle, spray_angle, sprint_speed, woba_value) %>%
+  select(bip_id, bb_class, ground_ball, launch_speed, launch_angle, spray_angle, sprint_speed, woba_value) %>%
   drop_na()
 
 # split data

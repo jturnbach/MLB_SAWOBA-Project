@@ -32,13 +32,13 @@ train_xwobacon_model <- function(train, val, model_type, spray, model_name) {
       set_mode("regression") %>%
       set_engine("ranger", importance = "impurity")
     
-    num_predictors <- ncol(select(train, -bip_id, -woba_value))
+    num_predictors <- ncol(select(train, -bip_id, -bb_class, -ground_ball, -woba_value))
     mtry_param <- mtry(range = c(1, num_predictors))
     
     params <- parameters(spec) %>%
       update(mtry = mtry_param)
     
-  } else if (model_type == "knn") {
+  } else if (model_type == "knn" | model_type == "knn_scaled") {
     spec <- nearest_neighbor(neighbors = tune(), weight_func = "rectangular", dist_power = 2) %>%
       set_mode("regression") %>%
       set_engine("kknn")
@@ -48,17 +48,28 @@ train_xwobacon_model <- function(train, val, model_type, spray, model_name) {
     
     validation <- analysis(val$splits[[1]])
     
-    # split by bb_type
+    train_knn <- train %>% filter(ground_ball == 0)
+    val_knn <- validation %>% filter(ground_ball == 0)
     
+    train_gam <- train %>% filter(ground_ball == 1)
+    val_gam <- validation %>% filter(ground_ball == 1)
+    
+    spec_knn <- nearest_neighbor()
+
   }
   
   # Create model recipe
-#  if (model_type == "knn") {
- #   # scale features
-#  } else if {
-    #rec <- recipe(woba_value ~ ., data = train) %>%
-   #   update_role(bip_id, new_role = "ID")
-  #}
+  if (model_type == "knn_scaled") {
+    rec <- recipe(woba_value ~ ., data = train) %>%
+      update_role(bip_id, bb_class, ground_ball, new_role = "ID") %>%
+      step_normalize(all_predictors(), role = "predictor", method = "range")
+    
+  } else if (model_type == "knn_gam") {
+    
+  } else {
+    rec <- recipe(woba_value ~ ., data = train) %>%
+      update_role(bip_id, bb_class, ground_ball, new_role = "ID")
+  }
   
   # Combine specification and recipe into a workflow
   wf <- workflow() %>%
@@ -112,7 +123,9 @@ train_xwobacon_model(train, val, spray = "no", model_type = "gbt", model_name = 
 train_xwobacon_model(train, val, spray = "yes", model_type = "gbt", model_name = "gbt_with_spray_model")
 train_xwobacon_model(train, val, spray = "no", model_type = "rf", model_name = "rf_without_spray_model")
 train_xwobacon_model(train, val, spray = "yes", model_type = "rf", model_name = "rf_with_spray_model")
-train_xwobacon_model(train, val, spray = "no", model_type = "knn", model_name = "knn_without_spray_model")
-train_xwobacon_model(train, val, spray = "yes", model_type = "knn", model_name = "knn_with_spray_model")
-train_xwobacon_model(train, val, spray = "no", model_type = "knn_gam", model_name = "knn_gam_without_spray_model")
-train_xwobacon_model(train, val, spray = "yes", model_type = "knn_gam", model_name = "knn_gam_with_spray_model")
+#train_xwobacon_model(train, val, spray = "no", model_type = "knn", model_name = "knn_without_spray_model")
+#train_xwobacon_model(train, val, spray = "yes", model_type = "knn", model_name = "knn_with_spray_model")
+#train_xwobacon_model(train, val, spray = "no", model_type = "knn_scaled", model_name = "knn_scaled_without_spray_model")
+#train_xwobacon_model(train, val, spray = "yes", model_type = "knn_scaled", model_name = "knn_scaled_with_spray_model")
+#train_xwobacon_model(train, val, spray = "no", model_type = "knn_gam", model_name = "knn_gam_without_spray_model")
+#train_xwobacon_model(train, val, spray = "yes", model_type = "knn_gam", model_name = "knn_gam_with_spray_model")
