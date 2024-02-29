@@ -13,24 +13,22 @@ bip_processed <- bip_raw %>%
 bip_processed <- bip_processed %>%
   filter(!(events %in% c("sac_bunt", "sac_bunt_double_play", "catcher_interf")))
 
-# Create indicator for ground ball. Use for splitting data between KNN and GAM
-bip_processed <- bip_processed %>%
-  mutate(ground_ball = ifelse(bb_type == "ground_ball", 1, 0))
-
 # remove unneeded variables and remove NA
 bip_processed <- bip_processed %>%
-  select(bip_id, bb_class, ground_ball, launch_speed, launch_angle, spray_angle, sprint_speed, woba_value) %>%
+  select(bip_id, bb_class, launch_speed, launch_angle, spray_angle, sprint_speed, woba_value) %>%
   drop_na()
 
 # split data
-set.seed(40)
-data_split <- initial_split(bip_processed, prop = 0.8, strata = woba_value)
+set.seed(3)
+data_split <- initial_validation_split(bip_processed, prop = c(0.6, 0.2), strata = woba_value)
 train <- training(data_split)
+val <- validation(data_split)
+val_set <- validation_set(data_split)
 test <- testing(data_split)
-val <- validation_split(train, prop = 0.25, strata = woba_value)
 
 # save data for modeling
 write.csv(bip_processed, "project/volume/data/processed/bip_processed.csv", row.names = FALSE)
 write.csv(train, "project/volume/data/processed/train.csv", row.names = FALSE)
+write.csv(val, "project/volume/data/processed/val.csv", row.names = FALSE)
+saveRDS(val_set, "project/volume/data/processed/val_set.rds")
 write.csv(test, "project/volume/data/processed/test.csv", row.names = FALSE)
-saveRDS(val, "project/volume/data/processed/val.rds")

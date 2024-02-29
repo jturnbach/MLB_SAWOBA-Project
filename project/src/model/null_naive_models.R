@@ -1,5 +1,6 @@
 # Load libraries
 library(tidyverse)
+library(tidymodels)
 
 # Load processed data
 train <- read.csv("project/volume/data/processed/train.csv")

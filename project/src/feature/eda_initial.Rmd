@@ -25,7 +25,7 @@ head(bips)
 
 # Factor coloring
 bip_res_colors <- c("field_out" = "#0066CC", "single" = "#FFFF00", "double" = "#FFCC00", "triple" = "#FF6600", "home_run" = "#CC3333")
-bb_class_colors <- c("barrel" = "#8B0000", solid_contact = "#FF4040", "flare_burner" = "#FFB347", "poorly_topped" = "#77DD77", "poorly_under" = "#8BD3E6", "poorly_weak" = "#FDFD96")
+bb_class_colors <- c("barrel" = "#8B0000", "solid_contact" = "#FF4040", "flare_burner" = "#FFB347", "poorly_topped" = "#77DD77", "poorly_under" = "#8BD3E6", "poorly_weak" = "#FDFD96")
 
 # Factor ordering
 bip_res_order <- c("field_out", "single", "double", "triple", "home_run")

@@ -9,17 +9,20 @@ library(vip)
 
 # Load processed data
 train <- read.csv("project/volume/data/processed/train.csv")
-val <- readRDS("project/volume/data/processed/val.rds")
+val <- read.csv("project/volume/data/processed/val.csv")
+val_set <- readRDS("project/volume/data/processed/val_set.rds")
 
 # Define function to train models using tidymodels framework
 train_xwobacon_model <- function(train, val, model_type, spray, model_name) {
   
   if (spray == "no") {
     train <- train %>% select(-spray_angle)
+    val <- val %>% select(-spray_angle)
   }
   
   # Create model specification based on model type
   if (model_type == "gbt") {
+    
     spec <- boost_tree(trees = tune(), min_n = tune(), tree_depth = tune(), learn_rate = tune(), sample_size = tune()) %>%
       set_mode("regression") %>%
       set_engine("xgboost")
@@ -32,58 +35,98 @@ train_xwobacon_model <- function(train, val, model_type, spray, model_name) {
       set_mode("regression") %>%
       set_engine("ranger", importance = "impurity")
     
-    num_predictors <- ncol(select(train, -bip_id, -bb_class, -ground_ball, -woba_value))
+    num_predictors <- ncol(select(train, -bip_id, -bb_class, -woba_value))
     mtry_param <- mtry(range = c(1, num_predictors))
     
-    params <- parameters(spec) %>%
-      update(mtry = mtry_param)
+    params <- parameters(spec) %>% update(mtry = mtry_param)
     
-  } else if (model_type == "knn" | model_type == "knn_scaled") {
+  } else if (model_type == "knn") {
+    
     spec <- nearest_neighbor(neighbors = tune(), weight_func = "rectangular", dist_power = 2) %>%
       set_mode("regression") %>%
       set_engine("kknn")
     
-    params <- parameters(spec)
+    params <- grid_regular(neighbors(range = c(100, 600)), levels = 6)
+    
   } else if (model_type == "knn_gam") {
+  
+    train_knn <- train %>% filter(!(bb_class %in% c("poorly_weak", "poorly_topped")))
+    val_knn <- val %>% filter(!(bb_class %in% c("poorly_weak", "poorly_topped")))
     
-    validation <- analysis(val$splits[[1]])
+    spec_knn <- nearest_neighbor(neighbors = tune(), weight_func = "rectangular", dist_power = 2) %>%
+      set_mode("regression") %>%
+      set_engine("kknn")
     
-    train_knn <- train %>% filter(ground_ball == 0)
-    val_knn <- validation %>% filter(ground_ball == 0)
+    params_knn <- grid_regular("neighbors", levels = seq(5, 10, by = 5))
     
-    train_gam <- train %>% filter(ground_ball == 1)
-    val_gam <- validation %>% filter(ground_ball == 1)
+    train_gam <- train %>% filter(bb_class %in% c("poorly_weak", "poorly_topped"))
+    val_gam <- val %>% filter(bb_class %in% c("poorly_weak", "poorly_topped"))
     
-    spec_knn <- nearest_neighbor()
-
+    spec_gam <- gen_additive_mod() %>%
+      set_mode("regression") %>%
+      set_engine("mgcv")
   }
   
   # Create model recipe
-  if (model_type == "knn_scaled") {
+  if (model_type == "knn") {
     rec <- recipe(woba_value ~ ., data = train) %>%
-      update_role(bip_id, bb_class, ground_ball, new_role = "ID") %>%
-      step_normalize(all_predictors(), role = "predictor", method = "range")
+      update_role(bip_id, bb_class, new_role = "ID") %>%
+      step_normalize(all_predictors(), role = "predictor")
     
   } else if (model_type == "knn_gam") {
+    #rec_knn <- 
+    
+    #rec_gam <-
     
   } else {
     rec <- recipe(woba_value ~ ., data = train) %>%
-      update_role(bip_id, bb_class, ground_ball, new_role = "ID")
+      update_role(bip_id, bb_class, new_role = "ID")
   }
   
   # Combine specification and recipe into a workflow
-  wf <- workflow() %>%
-    add_model(spec) %>%
-    add_recipe(rec)
+  if (model_type != "knn_gam") {
+    wf <- workflow() %>%
+      add_model(spec) %>%
+      add_recipe(rec)
+  } else {
+    wf_knn <- workflow() %>%
+      add_model(spec_knn) %>%
+      add_recipe(rec_knn)
+    
+    wf_gam <- workflow() %>%
+      add_model(spec_gam) %>%
+      add_recipe(rec_gam)
+  }
   
   # Tune hyperparameters via Bayesian optimization using validation set
-  tune_res <- wf %>%
-    tune_bayes(resamples = val,
-               initial = 10,
-               iter = 100,
-               param_info = params,
-               control = control_bayes(verbose = TRUE, no_improve = 10, seed = 40),
-               metrics = metric_set(rmse))
+  if (!(model_type %in% c("knn", "knn_gam"))) {
+    
+    tune_res <- wf %>%
+      tune_bayes(resamples = val_set,
+                 initial = 10,
+                 iter = 100,
+                 param_info = params,
+                 control = control_bayes(verbose = TRUE, no_improve = 10, seed = 40),
+                 metrics = metric_set(rmse))
+    
+  } else if (model_type == "knn") {
+    
+    tune_res <- wf %>%
+      tune_grid(resamples = val_set,
+                grid = params,
+                control = control_grid(verbose = TRUE),
+                metrics = metric_set(rmse))
+    
+  } else if (model_type == "knn_gam") {
+    
+    tune_res_knn <- wf %>%
+      tune_grid(resamples = val_set,
+                grid = params,
+                control = control,
+                metrics = metric_set(rmse))
+    
+    #tune_res_gam
+  }
   
   # Collect validation errors
   validation_error <- tune_res %>%
@@ -95,6 +138,9 @@ train_xwobacon_model <- function(train, val, model_type, spray, model_name) {
   
   # Extract best-performing hyperparameters
   best_params <- select_best(tune_res, "rmse")
+  
+  # Combine training and validation to train final model
+  train <- rbind(train, val)
   
   # Train best candidate model
   set.seed(40)
@@ -123,9 +169,7 @@ train_xwobacon_model(train, val, spray = "no", model_type = "gbt", model_name = 
 train_xwobacon_model(train, val, spray = "yes", model_type = "gbt", model_name = "gbt_with_spray_model")
 train_xwobacon_model(train, val, spray = "no", model_type = "rf", model_name = "rf_without_spray_model")
 train_xwobacon_model(train, val, spray = "yes", model_type = "rf", model_name = "rf_with_spray_model")
-#train_xwobacon_model(train, val, spray = "no", model_type = "knn", model_name = "knn_without_spray_model")
-#train_xwobacon_model(train, val, spray = "yes", model_type = "knn", model_name = "knn_with_spray_model")
-#train_xwobacon_model(train, val, spray = "no", model_type = "knn_scaled", model_name = "knn_scaled_without_spray_model")
-#train_xwobacon_model(train, val, spray = "yes", model_type = "knn_scaled", model_name = "knn_scaled_with_spray_model")
+train_xwobacon_model(train, val, spray = "no", model_type = "knn", model_name = "knn_without_spray_model")
+train_xwobacon_model(train, val, spray = "yes", model_type = "knn", model_name = "knn_with_spray_model")
 #train_xwobacon_model(train, val, spray = "no", model_type = "knn_gam", model_name = "knn_gam_without_spray_model")
 #train_xwobacon_model(train, val, spray = "yes", model_type = "knn_gam", model_name = "knn_gam_with_spray_model")
