@@ -4,8 +4,7 @@ library(tidymodels)
 
 # Load processed data
 train <- read.csv("project/volume/data/processed/train.csv")
-val <- readRDS("project/volume/data/processed/val.rds")
-val <- analysis(val$splits[[1]])
+val <- read.csv("project/volume/data/processed/val.csv")
 
 # --- Null Model ---
 
