@@ -1,5 +1,14 @@
+# Front Matter ----------
+
 # Load libraries
 library(tidyverse)
+library(tidymodels)
+library(kknn)
+library(mgcv)
+
+# Load in final models (without spray)
+final_knn_with_model <- readRDS("project/volume/models/knn_gam_with_spray_model_knn.rds")
+final_gam_with_model <- readRDS("project/volume/models/knn_gam_with_spray_model_gam.rds")
 
 # Read in raw data
 batter2020 <- read.csv("project/volume/data/raw/sc_2020.csv")
@@ -19,6 +28,10 @@ total2022_woba <- left_join(batter2022, woba22, by = c("batter" = "player_id"))
 total2023_woba <- left_join(batter2023, woba23, by = c("batter" = "player_id"))
 master_woba <- rbind(total2020_woba, total2021_woba, total2022_woba, total2023_woba)
 master_woba <- master_woba %>% rename(player_id = batter)
+
+
+
+# Calculate raw totals ----------
 
 # Select only when an event occurs, we don't need every pitch
 all_play <- master_woba %>%
@@ -56,7 +69,7 @@ all_play_clean <- all_play_clean %>%
     weighted_walk_hbp = coalesce(weighted_walk_hbp, 0)
     )
 
-# Calculating denominator of sa-xwOBA 
+# Calculating denominator of xwOBA 
 denom <- all_play_clean %>%
   filter(events %in% c("strikeout", "field_out", "double", "single", 
                        "force_out", "home_run", "triple", "field_error", 
@@ -74,3 +87,14 @@ all_play_clean <- all_play_clean %>%
 
 # Save data for wOBA calculations
 write.csv(all_play_clean, "project/volume/data/processed/woba_all_play.csv", row.names = FALSE)
+
+
+
+# Predict xwOBAcon for every batted ball ----------
+bbe <- 
+  
+bbe_fb_ld <-
+  
+bbe_weaK_gb <-
+  
+

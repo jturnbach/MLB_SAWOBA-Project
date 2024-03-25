@@ -436,7 +436,30 @@ woba_by_result
 # Visualize wOBA values by BIP result
 ggplot(data = woba_by_result, mapping = aes(x = bip_result, y = woba_value)) +
   geom_bar(stat = "identity", fill = "#0066CC", color = "#FFFFFF") +
-  labs(title = "wOBA Value by BIP Result", x = "Batted Ball Result", y = "wOBA Value") +
+  labs(title = "wOBA Value by BIP Result", y = "wOBA Value") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+# wOBA value for each batted ball classification
+woba_by_bbclass <- bips %>%
+  group_by(bb_class) %>%
+  summarise(woba_value = round(mean(woba_value, na.rm = TRUE), 1)) %>%
+  drop_na() %>%
+  arrange(desc(woba_value))
+
+woba_by_bbclass$bb_class <- factor(woba_by_bbclass$bb_class, levels = c("barrel", "solid_contact", "flare_burner", "poorly_topped", "poorly_weak", "poorly_under"))
+
+woba_by_bbclass
+```
+
+```{r}
+# Visualize wOBA values by batted ball classification
+ggplot(data = woba_by_bbclass, mapping = aes(x = bb_class, y = woba_value)) +
+  geom_bar(stat = "identity", fill = "#0066CC", color = "#FFFFFF") +
+  labs(title = "wOBA Value by Batted Ball Classification", y = "wOBA Value") +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
