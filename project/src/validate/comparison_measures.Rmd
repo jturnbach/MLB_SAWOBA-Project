@@ -40,16 +40,16 @@ descriptiveness <- function(woba_type, year) {
 }
 
 # 2021
-desc_xwoba_21 <- descriptiveness('est_woba', 2021)
-desc_saxwoba_21 <- descriptiveness('sa_xwoba', 2021)
+desc_xwoba_21 <- round(descriptiveness('est_woba', 2021), 2)
+desc_saxwoba_21 <- round(descriptiveness('sa_xwoba', 2021), 2)
 
 # 2022
-desc_xwoba_22 <- descriptiveness('est_woba', 2022)
-desc_saxwoba_22 <- descriptiveness('sa_xwoba', 2022)
+desc_xwoba_22 <- round(descriptiveness('est_woba', 2022), 2)
+desc_saxwoba_22 <- round(descriptiveness('sa_xwoba', 2022), 2)
 
 # 2023
-desc_xwoba_23 <- descriptiveness('est_woba', 2023)
-desc_saxwoba_23 <- descriptiveness('sa_xwoba', 2023)
+desc_xwoba_23 <- round(descriptiveness('est_woba', 2023), 2)
+desc_saxwoba_23 <- round(descriptiveness('sa_xwoba', 2023), 2)
 
 ```
 
@@ -80,25 +80,25 @@ xwoba_22_23$harmonic_weights <- mapply(harmonic_mean, xwoba_22_23$woba_denom_22,
 weights = harmonic mean
 ```{r, message=FALSE, warning=FALSE}
 # Calculate Predictiveness
-pred_xwoba_21_22 <- weightedCorr(xwoba_21_22$est_woba_21, 
+pred_xwoba_21_22 <- round(weightedCorr(xwoba_21_22$est_woba_21, 
                                  xwoba_21_22$woba_22, 
                                  weights = xwoba_21_22$harmonic_weights, 
-                                 method = "spearman")
+                                 method = "spearman"), 2)
 
-pred_xwoba_22_23 <- weightedCorr(xwoba_22_23$est_woba_22, 
+pred_xwoba_22_23 <- round(weightedCorr(xwoba_22_23$est_woba_22, 
                                  xwoba_22_23$woba_23, 
                                  weights = xwoba_22_23$harmonic_weights, 
-                                 method = "spearman")
+                                 method = "spearman"), 2)
 
-pred_saxwoba_21_22 <- weightedCorr(xwoba_21_22$sa_xwoba_21, 
+pred_saxwoba_21_22 <- round(weightedCorr(xwoba_21_22$sa_xwoba_21, 
                                    xwoba_21_22$woba_22, 
                                    weights = xwoba_21_22$harmonic_weights, 
-                                   method = "spearman")
+                                   method = "spearman"), 2)
 
-pred_saxwoba_22_23 <- weightedCorr(xwoba_22_23$sa_xwoba_22, 
+pred_saxwoba_22_23 <- round(weightedCorr(xwoba_22_23$sa_xwoba_22, 
                                    xwoba_22_23$woba_23, 
                                    weights = xwoba_22_23$harmonic_weights, 
-                                   method = "spearman")
+                                   method = "spearman"), 2)
 
 ```
 
@@ -106,73 +106,121 @@ pred_saxwoba_22_23 <- weightedCorr(xwoba_22_23$sa_xwoba_22,
 weights = harmonic mean
 ```{r, message=FALSE, warning=FALSE}
 #Calculate Reliability
-rel_xwoba_21_22 <- weightedCorr(xwoba_21_22$est_woba_21, 
+rel_xwoba_21_22 <- round(weightedCorr(xwoba_21_22$est_woba_21, 
                                  xwoba_21_22$est_woba_22, 
                                  weights = xwoba_21_22$harmonic_weights, 
-                                 method = "spearman")
+                                 method = "spearman"), 2)
 
-rel_saxwoba_21_22 <- weightedCorr(xwoba_21_22$sa_xwoba_21, 
+rel_saxwoba_21_22 <- round(weightedCorr(xwoba_21_22$sa_xwoba_21, 
                                  xwoba_21_22$sa_xwoba_22, 
                                  weights = xwoba_21_22$harmonic_weights, 
-                                 method = "spearman")
+                                 method = "spearman"), 2)
 
-rel_xwoba_22_23 <- weightedCorr(xwoba_22_23$est_woba_22, 
+rel_xwoba_22_23 <- round(weightedCorr(xwoba_22_23$est_woba_22, 
                                  xwoba_22_23$est_woba_23, 
                                  weights = xwoba_22_23$harmonic_weights, 
-                                 method = "spearman")
+                                 method = "spearman"), 2)
 
-rel_saxwoba_22_23 <- weightedCorr(xwoba_22_23$sa_xwoba_22, 
+rel_saxwoba_22_23 <- round(weightedCorr(xwoba_22_23$sa_xwoba_22, 
                                  xwoba_22_23$sa_xwoba_23, 
                                  weights = xwoba_22_23$harmonic_weights, 
-                                 method = "spearman")
+                                 method = "spearman"), 2)
 
 ```
 
+## Create Tables
 ```{r, message=FALSE, warning=FALSE}
 # Create a dataframe for descriptiveness results
 desc_results <- data.frame(
   Year = c("2021", "2022", "2023"),
-  xwOBA_Descriptiveness = c(desc_xwoba_21, desc_xwoba_22, desc_xwoba_23),
-  sa_xwOBA_Descriptiveness = c(desc_saxwoba_21, desc_saxwoba_22, desc_saxwoba_23)
+  MLB_xwOBA = c(desc_xwoba_21, desc_xwoba_22, desc_xwoba_23),
+  sa_xwOBAcon = c(desc_saxwoba_21, desc_saxwoba_22, desc_saxwoba_23)
 )
 
 # Find average descriptiveness
-desc_results <- rbind(desc_results, c("Average", mean(desc_results$xwOBA_Descriptiveness, na.rm = TRUE), mean(desc_results$sa_xwOBA_Descriptiveness, na.rm = TRUE)))
+desc_results <- rbind(desc_results, c("Average", 
+                                      mean(desc_results$MLB_xwOBA, na.rm = TRUE), 
+                                      mean(desc_results$sa_xwOBA, na.rm = TRUE)))
 
-# Create a dataframe for predictiveness and reliability results
-pred_rel_results <- data.frame(
-  Year = c("2021-2022", "2022-2023"),
-  xwOBA_Predictiveness = c(pred_xwoba_21_22, pred_xwoba_22_23),
-  sa_xwOBA_Predictiveness = c(pred_saxwoba_21_22, pred_saxwoba_22_23),
-  xwOBA_Reliability = c(rel_xwoba_21_22, rel_xwoba_22_23),
-  sa_xwOBA_Reliability = c(rel_saxwoba_21_22, rel_saxwoba_22_23)
+pred_results <- data.frame(
+  Season = c("2021-2022", "2022-2023"),
+  MLB_xwOBA = c(pred_xwoba_21_22, pred_xwoba_22_23),
+  sa_xwOBAcon = c(pred_saxwoba_21_22, pred_saxwoba_22_23)
 )
 
+# Find average descriptiveness
+pred_results <- rbind(pred_results, c("Average", 
+                                      mean(pred_results$MLB_xwOBA, na.rm = TRUE), 
+                                      mean(pred_results$sa_xwOBAcon, na.rm = TRUE)))
+
+# Create a dataframe for predictiveness and reliability results
+rel_results <- data.frame(
+  Season = c("2021-2022", "2022-2023"),
+  MLB_xwOBA = c(rel_xwoba_21_22, rel_xwoba_22_23),
+  sa_xwOBAcon = c(rel_saxwoba_21_22, rel_saxwoba_22_23)
+)
+
+# Find average descriptiveness
+rel_results <- rbind(rel_results, c("Average", 
+                                      mean(rel_results$MLB_xwOBA, na.rm = TRUE), 
+                                      mean(rel_results$sa_xwOBAcon, na.rm = TRUE)))
+
 write.csv(desc_results, paste0(wd, "project/volume/data/processed/desc.csv"))
-write.csv(pred_rel_results, paste0(wd, "project/volume/data/processed/pred_and_rel.csv"))
+write.csv(pred_results, paste0(wd, "project/volume/data/processed/pred.csv"))
+write.csv(rel_results, paste0(wd, "project/volume/data/processed/rel.csv"))
 
 ```
 
 ## Descriptiveness Results
 ```{r, message=FALSE, warning=FALSE}
 kable(desc_results)
-```
-```{r}
+
 desc_long <- reshape2::melt(desc_results, id.vars = "Year", variable.name = "Measure", value.name = "Correlation")
 desc_long$Correlation <- as.numeric(as.character(desc_long$Correlation))
 
 ggplot(desc_long, aes(x = Year, y = Correlation, fill = Measure)) + 
   geom_bar(stat = "identity", position = position_dodge()) +
-  theme_minimal() +
   labs(title = "Descriptiveness of xwOBA and sa-xwOBA",
        x = "Year",
        y = "Correlation",
        fill = "Measure") +
-  scale_fill_manual(values = c("xwOBA_Descriptiveness" = "blue", "sa_xwOBA_Descriptiveness" = "red")) +
+  scale_fill_manual(values = c("MLB_xwOBA" = "blue", "sa_xwOBAcon" = "red")) +
   scale_y_continuous(limits = c(0, 1))
+
+```
+## Predictiveness Results
+```{r, message=FALSE, warning=FALSE}
+kable(pred_results)
+
+pred_long <- reshape2::melt(pred_results, id.vars = "Season", variable.name = "Measure", value.name = "Correlation")
+pred_long$Correlation <- as.numeric(as.character(pred_long$Correlation))
+
+ggplot(pred_long, aes(x = Season, y = Correlation, fill = Measure)) + 
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Predictiveness of xwOBA and sa-xwOBA",
+       x = "Season",
+       y = "Correlation",
+       fill = "Measure") +
+  scale_fill_manual(values = c("MLB_xwOBA" = "blue", "sa_xwOBAcon" = "red")) +
+  scale_y_continuous(limits = c(0, 1))
+
 ```
 
-## Predictiveness and Reliability Results
+## Reliability Results
 ```{r, message=FALSE, warning=FALSE}
-kable(pred_rel_results)  
+kable(rel_results)
+
+rel_long <- reshape2::melt(rel_results, id.vars = "Season", variable.name = "Measure", value.name = "Correlation")
+rel_long$Correlation <- as.numeric(as.character(rel_long$Correlation))
+
+ggplot(rel_long, aes(x = Season, y = Correlation, fill = Measure)) + 
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Reliability of xwOBA and sa-xwOBA",
+       x = "Season",
+       y = "Correlation",
+       fill = "Measure") +
+  scale_fill_manual(values = c("MLB_xwOBA" = "blue", "sa_xwOBAcon" = "red")) +
+  scale_y_continuous(limits = c(0, 1))
+
+
 ```
